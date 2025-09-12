@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework',   # for APIs
     'ocr', 
     'corsheaders',
+    'import_export',
 ]
 
 MIDDLEWARE = [

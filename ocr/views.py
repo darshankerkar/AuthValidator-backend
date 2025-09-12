@@ -7,6 +7,13 @@ from PIL import Image
 import imagehash
 from .models import Certificate
 
+# Add these imports for bulk upload
+import pandas as pd
+from django.core.files.base import ContentFile
+import base64
+import io
+import pytesseract
+
 class OCRView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
@@ -41,3 +48,32 @@ class OCRView(APIView):
                 {"status": "failed", "message": f"Failed to process image: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+# --- Bulk Upload View ---
+class BulkCertificateUploadView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            file = request.FILES.get('file')
+            if not file:
+                return Response({'error': 'No file uploaded'}, status=400)
+
+            ext = file.name.split('.')[-1].lower()
+            if ext == 'csv':
+                df = pd.read_csv(file)
+            elif ext in ['xls', 'xlsx']:
+                df = pd.read_excel(file)
+            else:
+                return Response({'error': 'Unsupported file type'}, status=400)
+
+            # Example: Check for required columns
+            required_cols = {"Roll no", "Name", "Certificate"}
+            missing = required_cols - set(df.columns)
+            if missing:
+                return Response({'error': f'Missing columns: {", ".join(missing)}'}, status=400)
+
+            # Example: Just return the number of rows for now
+            return Response({'rows': len(df), 'columns': list(df.columns)})
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
